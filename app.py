@@ -200,7 +200,7 @@ def create_new_order():
         
         # Validate required fields
         required_fields = ["transactionId", "externalPartnerId", "skus", "termType", 
-                          "termLength", "seatTotal", "contactEmail", "companyName"]
+                          "termLength", "seatTotal", "contactEmail", "companyName", "autoRenewState"]
         missing_fields = [field for field in required_fields if field not in data or not data[field]]
         
         if missing_fields:
@@ -213,6 +213,7 @@ def create_new_order():
             return jsonify({"error": "When managed is true, externalOrgId must be provided"}), 400
         
         # Make the API request
+        print(data)
         response = requests.post(f"{API_BASE_URL}/api/partners/v1/orders", headers=headers, json=data)
         response.raise_for_status()
         
