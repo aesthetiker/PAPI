@@ -126,6 +126,10 @@
                 <label for="companyName">Company Name:</label>
                 <input type="text" id="companyName" name="companyName" class="form-control" required>
             </div>
+            <div class="form-group">
+                <label for="">autoRenewState:</label>
+                <input type="text" id="autoRenewState" name="autoRenewState" class="form-control" required>
+            </div>
             
             <button type="submit" class="btn btn-primary">Create Tenant</button>
         </form>
@@ -218,7 +222,7 @@
                     contactFirstName: $('#contactFirstName').val(),
                     contactLastName: $('#contactLastName').val(),
                     companyName: $('#companyName').val(),
-                    productType: "MESP" // Add product type
+                    autoRenewState: $('#autoRenewState').val()
                 };
                 
                 console.log("Sending data:", formData);
