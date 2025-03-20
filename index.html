@@ -26,8 +26,14 @@
     </style>
 </head>
 <body>
+
     <div class="container">
         <h1>Lookout Partner Portal</h1>
+        
+        <div class="mb-4">
+            <button class="btn btn-primary mr-2" data-toggle="modal" data-target="#createOrgModal">Create New ORG</button>
+            <button class="btn btn-success" data-toggle="modal" data-target="#createTenantModal">Create New Tenant</button>
+        </div>
         
         <!-- Organizations Section -->
         <h2>Organizations</h2>
@@ -35,11 +41,8 @@
         <table id="orgsTable" class="table table-striped" style="display: none;">
             <thead>
                 <tr>
-                    <th>Organization ID</th>
                     <th>Name</th>
-                    <th>Status</th>
-                    <th>Created Date</th>
-                    <th>Actions</th>
+                    <th>ORG ID</th>
                 </tr>
             </thead>
             <tbody id="orgsTableBody">
@@ -72,15 +75,57 @@
                     <td>{{ tenant.licenseUsage }}</td>
                     <td>{{ tenant.state }}</td>
                     <td>
-                        <button class="btn btn-sm btn-primary view-tenant" data-tenant-id="{{ tenant.guid }}">View</button>
-                        <button class="btn btn-sm btn-warning edit-tenant" data-tenant-id="{{ tenant.guid }}">Edit</button>
-                        <button class="btn btn-sm btn-danger cancel-tenant" data-tenant-id="{{ tenant.guid }}" data-external-partner-id="{{ tenant.externalPartnerId }}">Cancel</button>
+                        <button class="btn btn-sm btn-primary view-tenant" data-tenant-id="{{ tenant.externalPartnerId }}">View</button>
+                        <button class="btn btn-sm btn-warning edit-tenant" data-tenant-id="{{ tenant.externalPartnerId }}">Edit</button>
+                        <button class="btn btn-sm btn-danger cancel-tenant" data-tenant-id="{{ tenant.externalPartnerId }}" data-external-partner-id="{{ tenant.externalPartnerId }}">Cancel</button>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         
+        <h2>Create New ORG</h2>
+        <form id="newOrgForm">
+            <div class="form-group">
+                <label for="transactionId">Transaction ID:</label>
+                <input type="text" id="transactionId" name="transactionId" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="externalPartnerId">External Partner ID:</label>
+                <input type="text" id="externalPartnerId" name="externalPartnerId" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="defaultOrganization">defaultOrganization:</label>
+                <input type="text" id="defaultOrganization" name="defaultOrganization" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="seatTotal">Seat Total:</label>
+                <input type="number" id="seatTotal" name="seatTotal" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="commercialPartnerName">Commercial Partner Name:</label>
+                <input type="text" id="commercialPartnerName" name="commercialPartnerName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="contactEmail">Contact Email:</label>
+                <input type="email" id="contactEmail" name="contactEmail" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="contactFirstName">Contact First Name:</label>
+                <input type="text" id="contactFirstName" name="contactFirstName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="contactLastName">Contact Last Name:</label>
+                <input type="text" id="contactLastName" name="contactLastName" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="name">Company Name:</label>
+                <input type="text" id="name" name="name" class="form-control" required>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">Create ORG</button>
+        </form>
+
         <h2>Create New Tenant</h2>
         <form id="newOrderForm">
             <div class="form-group">
@@ -127,13 +172,37 @@
                 <input type="text" id="companyName" name="companyName" class="form-control" required>
             </div>
             <div class="form-group">
-                <label for="">autoRenewState:</label>
-                <input type="text" id="autoRenewState" name="autoRenewState" class="form-control" required>
+                <label for="autoRenewState">Auto Renew:</label>
+                <select id="autoRenewState" name="autoRenewState" class="form-control" required>
+                    <option value="OPEN">Open</option>
+                    <option value="ON">On</option>
+                    <option value="OFF">Off</option>
+                </select>
             </div>
             
             <button type="submit" class="btn btn-primary">Create Tenant</button>
         </form>
         
+        <!-- JSON View Tenant Output Modal -->
+        <div class="modal fade" id="jsonOutputModal" tabindex="-1" role="dialog" aria-labelledby="jsonOutputModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                <h5 class="modal-title" id="jsonOutputModalLabel">Tenant Details</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                </div>
+                <div class="modal-body">
+                <!-- JSON will be displayed here -->
+                </div>
+                <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+            </div>
+        </div>
+
         <!-- Edit Tenant Modal -->
         <div class="modal fade" id="editTenantModal" tabindex="-1" role="dialog" aria-labelledby="editTenantModalLabel" aria-hidden="true">
             <div class="modal-dialog" role="document">
@@ -148,12 +217,35 @@
                         <form id="editTenantForm">
                             <input type="hidden" id="editTenantId" name="editTenantId">
                             <div class="form-group">
-                                <label for="editName">Name:</label>
-                                <input type="text" id="editName" name="editName" class="form-control" required>
+                                <label for="editTransactionId">Transaction ID:</label>
+                                <input type="text" id="editTransactionId" name="editTransactionId" class="form-control" required>
                             </div>
                             <div class="form-group">
                                 <label for="editSeatTotal">Seat Total:</label>
                                 <input type="number" id="editSeatTotal" name="editSeatTotal" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editSkus">SKUs:</label>
+                                <input type="text" id="editSkus" name="editSkus" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editTermType">Term Type:</label>
+                                <select id="editTermType" name="editTermType" class="form-control" required>
+                                    <option value="ANNUAL">Annual</option>
+                                    <option value="MONTHLY">Monthly</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="editTermLength">Term Length:</label>
+                                <input type="number" id="editTermLength" name="editTermLength" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="editAutoRenewState">Auto Renew:</label>
+                                <select id="editAutoRenewState" name="editAutoRenewState" class="form-control" required>
+                                    <option value="OPEN">Open</option>
+                                    <option value="ON">On</option>
+                                    <option value="OFF">Off</option>
+                                </select>
                             </div>
                         </form>
                     </div>
@@ -164,7 +256,8 @@
                 </div>
             </div>
         </div>
-        
+    
+
         <!-- Cancel Tenant Modal -->
         <div class="modal fade" id="cancelTenantModal" tabindex="-1" role="dialog" aria-labelledby="cancelTenantModalLabel" aria-hidden="true">
             <div class="modal-dialog" role="document">
@@ -196,6 +289,53 @@
         </div>
     </div>
 
+        <!-- Create ORG Modal -->
+        <div class="modal fade" id="createOrgModal" tabindex="-1" role="dialog" aria-labelledby="createOrgModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createOrgModalLabel">Create New ORG</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="newOrgForm">
+                            <!-- Your existing form fields for creating an ORG -->
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="submitNewOrg">Create ORG</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Create Tenant Modal -->
+        <div class="modal fade" id="createTenantModal" tabindex="-1" role="dialog" aria-labelledby="createTenantModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createTenantModalLabel">Create New Tenant</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="newOrderForm">
+                            <!-- Your existing form fields for creating a tenant -->
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="submitNewTenant">Create Tenant</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
@@ -204,52 +344,87 @@
             // Fetch organizations when the page loads
             fetchOrganizations();
             
-            // Form submission for creating a new tenant
-            $('#newOrderForm').submit(function(e) {
-                e.preventDefault();
-                
-                console.log("Form submitted");
-                
-                // Collect form data
-                const formData = {
-                    transactionId: $('#transactionId').val(),
-                    externalPartnerId: $('#externalPartnerId').val(),
-                    skus: [$('#skus').val()],
-                    termType: $('#termType').val(),
-                    termLength: parseInt($('#termLength').val()),
-                    seatTotal: parseInt($('#seatTotal').val()),
-                    contactEmail: $('#contactEmail').val(),
-                    contactFirstName: $('#contactFirstName').val(),
-                    contactLastName: $('#contactLastName').val(),
-                    companyName: $('#companyName').val(),
-                    autoRenewState: $('#autoRenewState').val()
-                };
-                
-                console.log("Sending data:", formData);
-                
-                // Submit the order
-                $.ajax({
-                    url: '/api/new_order',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify(formData),
-                    success: function(response) {
-                        alert('Tenant created successfully!');
-                        window.location.reload();
-                    },
-                    error: function(xhr) {
-                        let errorMessage = 'Error creating tenant';
-                        if (xhr.responseJSON && xhr.responseJSON.error) {
-                            errorMessage += ': ' + xhr.responseJSON.error;
-                            if (xhr.responseJSON.details) {
-                                errorMessage += '\nDetails: ' + JSON.stringify(xhr.responseJSON.details);
-                            }
+        // Submit new ORG form
+        $('#submitNewOrg').click(function() {
+            // Your existing code for collecting form data
+            const formData = {
+                transactionId: $('#newOrgForm #transactionId').val(),
+                externalPartnerId: $('#newOrgForm #externalPartnerId').val(),
+                seatTotal: parseInt($('#newOrgForm #seatTotal').val()),
+                defaultOrganization: $('#newOrgForm #defaultOrganization').val(),
+                commercialPartnerName: $('#newOrgForm #commercialPartnerName').val(),
+                contactEmail: $('#newOrgForm #contactEmail').val(),
+                contactFirstName: $('#newOrgForm #contactFirstName').val(),
+                contactLastName: $('#newOrgForm #contactLastName').val(),
+                name: $('#newOrgForm #name').val(),
+            };
+            
+        // Submit the order ORG
+            $.ajax({
+                url: '/api/new_org',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    alert('ORG created successfully!');
+                    $('#createOrgModal').modal('hide');
+                    window.location.reload();
+                },
+                error: function(xhr) {
+                    let errorMessage = 'Error creating ORG';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMessage += ': ' + xhr.responseJSON.error;
+                        if (xhr.responseJSON.details) {
+                            errorMessage += '\nDetails: ' + JSON.stringify(xhr.responseJSON.details);
                         }
-                        alert(errorMessage);
-                        console.error('Error response:', xhr.responseText);
                     }
-                });
+                    alert(errorMessage);
+                    console.error('Error response:', xhr.responseText);
+                }
             });
+        });
+
+        // Submit new Tenant form
+        $('#submitNewTenant').click(function() {
+            // Your existing code for collecting form data
+            const formData = {
+                transactionId: $('#newOrderForm #transactionId').val(),
+                externalPartnerId: $('#newOrderForm #externalPartnerId').val(),
+                skus: [$('#newOrderForm #skus').val()],
+                termType: $('#newOrderForm #termType').val(),
+                termLength: parseInt($('#newOrderForm #termLength').val()),
+                seatTotal: parseInt($('#newOrderForm #seatTotal').val()),
+                contactEmail: $('#newOrderForm #contactEmail').val(),
+                contactFirstName: $('#newOrderForm #contactFirstName').val(),
+                contactLastName: $('#newOrderForm #contactLastName').val(),
+                companyName: $('#newOrderForm #companyName').val(),
+                autoRenewState: $('#newOrderForm #autoRenewState').val()
+            };
+            
+            // Submit the order
+            $.ajax({
+                url: '/api/new_order',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                    alert('Tenant created successfully!');
+                    $('#createTenantModal').modal('hide');
+                    window.location.reload();
+                },
+                error: function(xhr) {
+                    let errorMessage = 'Error creating tenant';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMessage += ': ' + xhr.responseJSON.error;
+                        if (xhr.responseJSON.details) {
+                            errorMessage += '\nDetails: ' + JSON.stringify(xhr.responseJSON.details);
+                        }
+                    }
+                    alert(errorMessage);
+                    console.error('Error response:', xhr.responseText);
+                }
+            });
+        });
             
             // View tenant details
             $('.view-tenant').on('click', function() {
@@ -259,44 +434,74 @@
                     url: `/api/tenant/${tenantId}`,
                     type: 'GET',
                     success: function(response) {
-                        alert(JSON.stringify(response, null, 2));
+                        // Format the JSON with proper indentation
+                        const prettyJSON = JSON.stringify(response, null, 2);
+                        
+                        // Create a modal or container to display the formatted JSON
+                        const jsonContainer = $('<div class="json-container"></div>');
+                        jsonContainer.html(`<pre>${prettyJSON}</pre>`);
+                        
+                        // Add some basic styling
+                        $('pre', jsonContainer).css({
+                            'background-color': '#f5f5f5',
+                            'padding': '15px',
+                            'border-radius': '5px',
+                            'overflow': 'auto',
+                            'max-height': '80vh',
+                            'font-family': 'monospace'
+                        });
+                        
+                        // Show in a modal or replace an existing container
+                        $('#jsonOutputModal .modal-body').html(jsonContainer);
+                        $('#jsonOutputModal').modal('show');
+                        
+                        // Alternatively, if you don't have a modal:
+                        // $('body').append(jsonContainer);
                     },
                     error: function(xhr) {
+                        console.error('Error details:', xhr.status, xhr.responseText);
                         alert('Error fetching tenant details: ' + (xhr.responseJSON ? xhr.responseJSON.error : 'Unknown error'));
                     }
                 });
-            });
-            
+            });   
+
             // Edit tenant
             $('.edit-tenant').on('click', function() {
                 console.log("Edit button clicked");
                 const tenantId = $(this).data('tenant-id');
+                
+                // First, get the tenant details to populate the form
                 $.ajax({
                     url: `/api/tenant/${tenantId}`,
                     type: 'GET',
                     success: function(response) {
                         $('#editTenantId').val(tenantId);
-                        $('#editName').val(response.name);
-                        $('#editSeatTotal').val(response.seatTotal);
+                        $('#editName').val(response.name || '');
+                        $('#editSeatTotal').val(response.seatTotal || 0);
                         $('#editTenantModal').modal('show');
                     },
                     error: function(xhr) {
+                        console.error('Error details:', xhr.status, xhr.responseText);
                         alert('Error fetching tenant details: ' + (xhr.responseJSON ? xhr.responseJSON.error : 'Unknown error'));
                     }
                 });
             });
-            
+
             // Save tenant changes
             $('#saveTenantChanges').click(function() {
                 const tenantId = $('#editTenantId').val();
+                const transactionId = "modify_" + Date.now(); // Generate a unique transaction ID
+                
                 const formData = {
-                    name: $('#editName').val(),
-                    seatTotal: parseInt($('#editSeatTotal').val())
+                    transactionId: transactionId,
+                    externalPartnerId: tenantId,
+                    seatTotal: parseInt($('#editSeatTotal').val()),
+                    skus: ["MESP-C-U1Y-PD-TST"] // Include required SKUs
                 };
                 
                 $.ajax({
-                    url: `/api/tenant/${tenantId}`,
-                    type: 'PUT',
+                    url: `/api/orders/modify`,
+                    type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify(formData),
                     success: function(response) {
@@ -305,6 +510,7 @@
                         window.location.reload();
                     },
                     error: function(xhr) {
+                        console.error('Error details:', xhr.status, xhr.responseText);
                         alert('Error updating tenant: ' + (xhr.responseJSON ? xhr.responseJSON.error : 'Unknown error'));
                     }
                 });
@@ -316,53 +522,40 @@
                 const tenantId = $(this).data('tenant-id');
                 const externalPartnerId = $(this).data('external-partner-id');
                 
-                // First fetch the tenant details to get the orders
-                $.ajax({
-                    url: `/api/tenant/${tenantId}`,
-                    type: 'GET',
-                    success: function(response) {
-                        if (response.orders && response.orders.length > 0) {
-                            // Get the first active order
-                            const order = response.orders[0];
-                            $('#cancelTenantId').val(tenantId);
-                            $('#cancelExternalPartnerId').val(externalPartnerId);
-                            $('#cancelOrderId').val(order.id); // Store the actual order ID
-                            $('#cancelTransactionId').val(order.transactionId || '');
-                            $('#cancelTenantModal').modal('show');
-                        } else {
-                            alert('No orders found for this tenant');
-                        }
-                    },
-                    error: function(xhr) {
-                        alert('Error fetching tenant details: ' + (xhr.responseJSON ? xhr.responseJSON.error : 'Unknown error'));
-                    }
-                });
+                // Generate a unique transaction ID for this cancellation
+                const transactionId = "cancel_" + Date.now();
+                
+                // Show the cancel confirmation modal with pre-filled data
+                $('#cancelTenantId').val(tenantId);
+                $('#cancelExternalPartnerId').val(externalPartnerId);
+                $('#cancelTransactionId').val(transactionId);
+                $('#cancelTenantModal').modal('show');
             });
-            
+
             // Confirm cancel tenant
             $('#confirmCancelTenant').click(function() {
-                const tenantId = $('#cancelTenantId').val();
                 const externalPartnerId = $('#cancelExternalPartnerId').val();
-                const orderId = $('#cancelOrderId').val(); // Use the actual order ID
                 const transactionId = $('#cancelTransactionId').val();
                 
                 const formData = {
                     transactionId: transactionId,
                     externalPartnerId: externalPartnerId,
-                    productType: "MESP"
+                    skus: ["MESP-C-U1Y-PD-TST"], // Required field according to schema
+                    productType: "MES" // Optional but recommended
                 };
                 
                 $.ajax({
-                    url: `/api/tenant/${tenantId}/cancel_order/${orderId}`, // Use order ID, not transaction ID
-                    type: 'PATCH',
+                    url: `/api/orders/cancel`,
+                    type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify(formData),
                     success: function(response) {
-                        alert('Tenant cancelled successfully!');
+                        alert('Tenant cancellation request submitted successfully!');
                         $('#cancelTenantModal').modal('hide');
                         window.location.reload();
                     },
                     error: function(xhr) {
+                        console.error('Error details:', xhr.status, xhr.responseText);
                         alert('Error cancelling tenant: ' + (xhr.responseJSON ? xhr.responseJSON.error : 'Unknown error'));
                     }
                 });
@@ -401,38 +594,19 @@
             
             var tableBody = $('#orgsTableBody');
             tableBody.empty();
-            
+
             orgs.forEach(function(org) {
-                var createdDate = new Date(org.createdDate);
-                var formattedDate = createdDate.toLocaleDateString() + ' ' + createdDate.toLocaleTimeString();
-                
                 var row = $('<tr>');
-                row.append($('<td>').text(org.id));
                 row.append($('<td>').text(org.name));
-                row.append($('<td>').text(org.status));
-                row.append($('<td>').text(formattedDate));
-                
-                var actionsCell = $('<td>');
-                var viewButton = $('<button>')
-                    .addClass('btn btn-sm btn-info mr-2')
-                    .text('View Details')
-                    .click(function() {
-                        viewOrgDetails(org.id);
-                    });
-                
-                actionsCell.append(viewButton);
-                row.append(actionsCell);
+                row.append($('<td>').text(org.externalOrgId));
+    
                 tableBody.append(row);
             });
             
             $('#orgsLoading').hide();
             $('#orgsTable').show();
         }
-        
-        function viewOrgDetails(orgId) {
-            alert('Organization details for ID: ' + orgId);
-            // You could implement a modal to show more details here
-        }
+
     </script>
 </body>
 </html>
