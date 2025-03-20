@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify
 import requests
 import json
 import logging
+import time
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -11,7 +12,6 @@ logging.basicConfig(level=logging.DEBUG)
 
 # OAuth 2.0 Configuration
 TOKEN_URL = "https://partner.preprod.flexilis.com/oauth2/token"
-REFRESH_TOKEN_URL = "https://partner.preprod.flexilis.com/oauth2/token"
 PARTNER_CP_KEY = ""
 
 # API Configuration
@@ -55,31 +55,6 @@ def get_access_token():
         logging.error(f"Error obtaining access token: {str(e)}")
         return None
 
-def refresh_access_token():
-    global token_data
-    data = {
-        "grant_type": "refresh_token",
-        "refresh_token": token_data["refresh_token"]
-    }
-    
-    headers = {
-        "Accept": "application/json",
-        "Authorization": f"Bearer {PARTNER_CP_KEY}"
-    }
-    
-    try:
-        response = requests.post(REFRESH_TOKEN_URL, data=data, headers=headers)
-        response.raise_for_status()
-        new_token_data = response.json()
-        token_data["access_token"] = new_token_data.get("access_token")
-        token_data["refresh_token"] = new_token_data.get("refresh_token", token_data["refresh_token"])
-        token_data["expires_at"] = datetime.now() + timedelta(seconds=new_token_data.get("expires_in", 3600))
-        return token_data["access_token"]
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Error refreshing access token: {str(e)}")
-        token_data = {"access_token": None, "refresh_token": None, "expires_at": None}
-        return None
-
 @app.route('/')
 def index():
     access_token = get_access_token()
@@ -116,6 +91,8 @@ def index():
         logging.error(error_message)
         return render_template('error.html', error_message=error_message)
 
+#This could be for view
+
 @app.route('/api/tenant/<tenant_id>', methods=['GET'])
 def get_tenant(tenant_id):
     access_token = get_access_token()
@@ -125,14 +102,19 @@ def get_tenant(tenant_id):
     }
     
     try:
-        response = requests.get(f"{API_BASE_URL}/api/partners/v1/tenants/{tenant_id}", headers=headers)
+        # Use the tenant_id parameter from the route
+        response = requests.get(f"{API_BASE_URL}/api/partners/v1/tenants/{tenant_id}/data_bundle", headers=headers)
         response.raise_for_status()
         return jsonify(response.json()), 200
     except requests.exceptions.RequestException as e:
+        app.logger.error(f"Error fetching tenant details: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/tenant/<tenant_id>', methods=['PUT'])
-def update_tenant(tenant_id):
+
+#This could be for edit
+
+@app.route('/api/orders/modify', methods=['POST'])
+def modify_order():
     access_token = get_access_token()
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -141,15 +123,25 @@ def update_tenant(tenant_id):
     }
     
     try:
+        # Get the request data
         data = request.json
-        response = requests.put(f"{API_BASE_URL}/api/partners/v1/tenants/{tenant_id}", headers=headers, json=data)
+        
+        # Send the modify request to the orders/modify endpoint
+        response = requests.post(
+            f"{API_BASE_URL}/api/partners/v1/orders/modify", 
+            headers=headers, 
+            json=data
+        )
         response.raise_for_status()
         return jsonify(response.json()), 200
     except requests.exceptions.RequestException as e:
+        app.logger.error(f"Error modifying order: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/tenant/<tenant_id>/cancel_order/<order_id>', methods=['PATCH'])
-def cancel_order(tenant_id, order_id):
+#This is for cancel an order
+
+@app.route('/api/orders/cancel', methods=['POST'])
+def cancel_order():
     access_token = get_access_token()
     headers = {
         "Authorization": f"Bearer {access_token}",
@@ -157,25 +149,87 @@ def cancel_order(tenant_id, order_id):
         "Content-Type": "application/json"
     }
     
-    cancel_data = {
-        "status": "cancelled",
-        "transactionId": request.json.get('transactionId'),
-        "externalPartnerId": request.json.get('externalPartnerId'),
-        "skus": request.json.get('skus'),
-        "productType": request.json.get('productType'),
-        "commercialPartnerName": request.json.get('commercialPartnerName')
+    try:
+        # Get the request data
+        data = request.json
+        
+        # Send the cancel request to the orders/cancel endpoint
+        response = requests.post(
+            f"{API_BASE_URL}/api/partners/v1/orders/cancel", 
+            headers=headers, 
+            json=data
+        )
+        response.raise_for_status()
+        return jsonify(response.json()), 200
+    except requests.exceptions.RequestException as e:
+        app.logger.error(f"Error cancelling order: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+#This is for ORG 
+@app.route('/api/new_org', methods=['POST'])
+def create_new_org():
+    access_token = get_access_token()
+    if not access_token:
+        logging.error("Failed to obtain access token for order creation")
+        return jsonify({"error": "Authentication failed"}), 401
+    
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Accept": "application/json",
+        "Content-Type": "application/json"
     }
     
     try:
-        response = requests.patch(f"{API_BASE_URL}/api/partners/v1/tenants/{tenant_id}/orders/{order_id}",
-                                headers=headers, json=cancel_data)
+        # Check if we have JSON data
+        if not request.is_json:
+            logging.error(f"Invalid request format. Expected JSON, got: {request.content_type}")
+            return jsonify({"error": "Request must be in JSON format"}), 400
+        
+        data = request.json
+        logging.debug(f"Received order data: {data}")
+        
+        # Validate required fields
+        required_fields = ["transactionId", "externalPartnerId", "seatTotal", "defaultOrganization", 
+                           "commercialPartnerName", "contactEmail", "contactFirstName", "contactLastName", "name"]
+        missing_fields = [field for field in required_fields if field not in data or not data[field]]
+        
+        if missing_fields:
+            logging.error(f"Missing required fields: {missing_fields}")
+            return jsonify({"error": f"Missing required fields: {', '.join(missing_fields)}"}), 400
+         
+        # Make the API request
+        print(data)
+        response = requests.post(f"{API_BASE_URL}/api/partners/v1/orders", headers=headers, json=data)
         response.raise_for_status()
-        return jsonify({"message": "Order cancelled successfully"}), 200
+        
+        logging.info(f"Order created successfully: {response.json()}")
+        return jsonify(response.json()), 201
+    
+    except requests.exceptions.HTTPError as e:
+        error_message = f"HTTP error creating order: {str(e)}"
+        logging.error(error_message)
+        
+        # Try to extract more detailed error information
+        error_detail = "Unknown error"
+        if hasattr(e, 'response') and e.response is not None:
+            try:
+                error_detail = e.response.json()
+            except:
+                error_detail = e.response.text
+                
+        return jsonify({"error": error_message, "details": error_detail}), e.response.status_code if hasattr(e, 'response') else 500
+    
     except requests.exceptions.RequestException as e:
-        error_message = f"Error cancelling order: {str(e)}"
+        error_message = f"Error creating order: {str(e)}"
+        logging.error(error_message)
+        return jsonify({"error": error_message}), 500
+    
+    except Exception as e:
+        error_message = f"Unexpected error creating order: {str(e)}"
         logging.error(error_message)
         return jsonify({"error": error_message}), 500
 
+#This is the approute for Tenants
 @app.route('/api/new_order', methods=['POST'])
 def create_new_order():
     access_token = get_access_token()
