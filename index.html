@@ -3,48 +3,52 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lookout Partner Portal</title>
+    <title>Lookout Partner Command Center</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <style>
-        body {
-            padding: 20px;
-        }
-        .container {
-            max-width: 1200px;
-        }
-        .table {
-            margin-top: 20px;
-        }
-        #orgsLoading {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        #orgsLoading .spinner-border {
-            margin-right: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='lookout-style.css') }}">
 </head>
+
 <body>
     <div class="container">
-        <h1>Lookout Partner Portal</h1>
+        <div class="header-container">
+            <div class="logo-container">
+                <img src="https://mtp-euc1.lookout.com/a/assets/lookout-0013380de37abf78a793375dccf1c3082ad2c9006054ea4d75e70fe4c5186b14.svg" alt="Lookout Logo">
+            </div>
+            <h1>Partner API Dashboard</h1>
+        </div>
         
+        <!-- Action Buttons -->
+        <div class="mb-4 text-center">
+            <button class="btn btn-primary mr-2" data-toggle="modal" data-target="#createOrgModal">Create New ORG</button>
+            <button class="btn btn-success" data-toggle="modal" data-target="#createTenantModal">Create New Tenant</button>
+        </div>
+
+
         <!-- Organizations Section -->
         <h2>Organizations</h2>
-        <div id="orgsLoading">Loading organizations...</div>
+        <div id="orgsLoading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="sr-only">Loading...</span>
+            </div>
+            Loading organizations...
+        </div>
         <table id="orgsTable" class="table table-striped" style="display: none;">
             <thead>
                 <tr>
                     <th>Name</th>
-                    <th>ORG ID</th>
+                    <th>External Org ID</th>
+                    <th>Seats</th>
+                    <th>Default Organization</th>
+                    <th>State</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody id="orgsTableBody">
                 <!-- Organizations will be populated here -->
             </tbody>
         </table>
-        
-        <h2>Tenants</h2>
+
+        <h2>Standalone Tenants</h2>
         <table class="table table-striped">
             <thead>
                 <tr>
@@ -59,7 +63,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for tenant in tenants %}
+                {% for tenant in tenants if not tenant.managed %}
                 <tr>
                     <td>{{ tenant.name }}</td>
                     <td>{{ tenant.guid }}</td>
@@ -71,129 +75,323 @@
                     <td>
                         <button class="btn btn-sm btn-primary view-tenant" data-tenant-id="{{ tenant.externalPartnerId }}">View</button>
                         <button class="btn btn-sm btn-warning edit-tenant" data-tenant-id="{{ tenant.externalPartnerId }}">Edit</button>
-                        <button class="btn btn-sm btn-danger cancel-tenant" data-tenant-id="{{ tenant.externalPartnerId }}" data-external-partner-id="{{ tenant.externalPartnerId }}">Cancel</button>
+                        <button class="btn btn-sm btn-danger cancel-tenant" data-tenant-id="{{ tenant.guid }}" data-external-partner-id="{{ tenant.externalPartnerId }}">Cancel</button>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         
-        <h2>Create New ORG</h2>
-        <form id="newOrgForm">
-            <div class="form-group">
-                <label for="transactionId">Transaction ID:</label>
-                <input type="text" id="transactionId" name="transactionId" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="externalPartnerId">External Partner ID:</label>
-                <input type="text" id="externalPartnerId" name="externalPartnerId" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="defaultOrganization">defaultOrganization:</label>
-                <input type="text" id="defaultOrganization" name="defaultOrganization" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="seatTotal">Seat Total:</label>
-                <input type="number" id="seatTotal" name="seatTotal" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="commercialPartnerName">Commercial Partner Name:</label>
-                <input type="text" id="commercialPartnerName" name="commercialPartnerName" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="contactEmail">Contact Email:</label>
-                <input type="email" id="contactEmail" name="contactEmail" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="contactFirstName">Contact First Name:</label>
-                <input type="text" id="contactFirstName" name="contactFirstName" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="contactLastName">Contact Last Name:</label>
-                <input type="text" id="contactLastName" name="contactLastName" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="name">Company Name:</label>
-                <input type="text" id="name" name="name" class="form-control" required>
-            </div>
-            
-            <button type="submit" class="btn btn-primary">Create ORG</button>
-        </form>
+        <h2>Managed Tenants</h2>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>GUID</th>
+                    <th>External Partner ID</th>
+                    <th>Organization</th>
+                    <th>SKUs</th>
+                    <th>Billing Date</th>
+                    <th>License Usage</th>
+                    <th>State</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tenant in tenants if tenant.managed %}
+                <tr>
+                    <td>{{ tenant.name }}</td>
+                    <td>{{ tenant.guid }}</td>
+                    <td>{{ tenant.externalPartnerId }}</td>
+                    <td>{{ tenant.orgName }}</td>
+                    <td>{{ tenant.skus|join(', ') }}</td>
+                    <td>{{ tenant.billingDate }}</td>
+                    <td>{{ tenant.licenseUsage }}</td>
+                    <td>{{ tenant.state }}</td>
+                    <td>
+                        <button class="btn btn-sm btn-primary view-tenant" data-tenant-id="{{ tenant.externalPartnerId }}">View</button>
+                        <button class="btn btn-sm btn-warning edit-tenant" data-tenant-id="{{ tenant.externalPartnerId }}">Edit</button>
+                        <button class="btn btn-sm btn-danger cancel-tenant" data-tenant-id="{{ tenant.guid }}" data-external-partner-id="{{ tenant.externalPartnerId }}">Cancel</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
 
-        <h2>Create New Tenant</h2>
-        <form id="newOrderForm">
-            <div class="form-group">
-                <label for="transactionId">Transaction ID:</label>
-                <input type="text" id="transactionId" name="transactionId" class="form-control" required>
+        <h2>Management</h2>
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Tenant Management</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="tenantKeyForm">
+                            <div class="form-group">
+                                <label for="tenantKeyId">External Partner ID:</label>
+                                <select id="tenantKeyId" class="form-control" required>
+                                    <option value="">Select a tenant...</option>
+                                    {% for tenant in tenants %}
+                                    <option value="{{ tenant.externalPartnerId }}">{{ tenant.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="tenantKeyName">Key Name (optional):</label>
+                                <input type="text" id="tenantKeyName" class="form-control" placeholder="ManagementAPI-">
+                            </div>
+                            <button type="button" id="getTenantKeys" class="btn btn-primary">Get Keys</button>
+                            <button type="button" id="createTenantKey" class="btn btn-success">Create Key</button>
+                        </form>
+                        <div id="tenantKeysResult" class="mt-3" style="display: none;">
+                            <h6>Application Keys:</h6>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Key Name</th>
+                                        <th>Created</th>
+                                        <th>Expires</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tenantKeysTable">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="externalPartnerId">External Partner ID:</label>
-                <input type="text" id="externalPartnerId" name="externalPartnerId" class="form-control" required>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Organization Management</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="orgKeyForm">
+                            <div class="form-group">
+                                <label for="orgKeyId">External Org ID:</label>
+                                <select id="orgKeyId" class="form-control" required>
+                                    <option value="">Select an organization...</option>
+                                    {% for org in orgs %}
+                                    <option value="{{ org.externalOrgId }}">{{ org.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="orgKeyName">Key Name (optional):</label>
+                                <input type="text" id="orgKeyName" class="form-control" placeholder="ManagementAPI-">
+                            </div>
+                            <button type="button" id="getOrgKeys" class="btn btn-primary">Get Keys</button>
+                            <button type="button" id="createOrgKey" class="btn btn-success">Create Key</button>
+                        </form>
+                        <div id="orgKeysResult" class="mt-3" style="display: none;">
+                            <h6>Application Keys:</h6>
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Key Name</th>
+                                        <th>Created</th>
+                                        <th>Expires</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orgKeysTable">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="skus">SKUs:</label>
-                <input type="text" id="skus" name="skus" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="termType">Term Type:</label>
-                <select id="termType" name="termType" class="form-control" required>
-                    <option value="ANNUAL">Annual</option>
-                    <option value="MONTHLY">Monthly</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="termLength">Term Length:</label>
-                <input type="number" id="termLength" name="termLength" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="seatTotal">Seat Total:</label>
-                <input type="number" id="seatTotal" name="seatTotal" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="contactEmail">Contact Email:</label>
-                <input type="email" id="contactEmail" name="contactEmail" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="contactFirstName">Contact First Name:</label>
-                <input type="text" id="contactFirstName" name="contactFirstName" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="contactLastName">Contact Last Name:</label>
-                <input type="text" id="contactLastName" name="contactLastName" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="companyName">Company Name:</label>
-                <input type="text" id="companyName" name="companyName" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="autoRenewState">Auto Renew:</label>
-                <select id="autoRenewState" name="autoRenewState" class="form-control" required>
-                    <option value="OPEN">Open</option>
-                    <option value="ON">On</option>
-                    <option value="OFF">Off</option>
-                </select>
-            </div>
-            
-            <button type="submit" class="btn btn-primary">Create Tenant</button>
-        </form>
-        
-        <!-- JSON View Tenant Output Modal -->
-        <div class="modal fade" id="jsonOutputModal" tabindex="-1" role="dialog" aria-labelledby="jsonOutputModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-lg" role="document">
-            <div class="modal-content">
-                <div class="modal-header">
-                <h5 class="modal-title" id="jsonOutputModalLabel">Tenant Details</h5>
+        </div>
+
+<!-- Key Details Modal -->
+<div class="modal fade" id="keyDetailsModal" tabindex="-1" role="dialog" aria-labelledby="keyDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="keyDetailsModalLabel">Application Key Details</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
-                </div>
-                <div class="modal-body">
-                <!-- JSON will be displayed here -->
-                </div>
-                <div class="modal-footer">
+            </div>
+            <div class="modal-body">
+                <div id="keyDetails"></div>
+            </div>
+            <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+        <!-- Create ORG Modal -->
+        <div class="modal fade" id="createOrgModal" tabindex="-1" role="dialog" aria-labelledby="createOrgModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="createOrgModalLabel">Create New ORG</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="newOrgForm">
+                            <div class="form-group">
+                                <label for="transactionId">Transaction ID:</label>
+                                <input type="text" id="transactionId" name="transactionId" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="externalPartnerId">External Partner ID:</label>
+                                <input type="text" id="externalPartnerId" name="externalPartnerId" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="defaultOrganization">Default Organization:</label>
+                                <select id="defaultOrganization" name="defaultOrganization" class="form-control" required>
+                                    <option value="true">True</option>
+                                    <option value="false">False</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="seatTotal">Seat Total:</label>
+                                <input type="number" id="seatTotal" name="seatTotal" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="commercialPartnerName">Commercial Partner Name:</label>
+                                <input type="text" id="commercialPartnerName" name="commercialPartnerName" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="contactEmail">Contact Email:</label>
+                                <input type="email" id="contactEmail" name="contactEmail" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="contactFirstName">Contact First Name:</label>
+                                <input type="text" id="contactFirstName" name="contactFirstName" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="contactLastName">Contact Last Name:</label>
+                                <input type="text" id="contactLastName" name="contactLastName" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="name">Company Name:</label>
+                                <input type="text" id="name" name="name" class="form-control" required>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        <button type="button" class="btn btn-primary" id="submitNewOrg">Create ORG</button>
+                    </div>
                 </div>
             </div>
+        </div>
+
+            <!-- Create Tenant Modal -->
+            <div class="modal fade" id="createTenantModal" tabindex="-1" role="dialog" aria-labelledby="createTenantModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-lg" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="createTenantModalLabel">Create New Tenant</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="newOrderForm">
+                                <div class="form-group">
+                                    <label for="orderType">Order Type:</label>
+                                    <select id="orderType" name="orderType" class="form-control" required>
+                                        <option value="regular">Regular Tenant</option>
+                                        <option value="managed">Managed Tenant</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group managed-field" style="display: none;">
+                                    <label for="externalOrgId">Organization:</label>
+                                    <select id="externalOrgId" name="externalOrgId" class="form-control">
+                                        <option value="">Select an organization...</option>
+                                        <!-- Will be populated dynamically -->
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="orderTransactionId">Transaction ID:</label>
+                                    <input type="text" id="orderTransactionId" name="transactionId" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="orderExternalPartnerId">External Partner ID:</label>
+                                    <input type="text" id="orderExternalPartnerId" name="externalPartnerId" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="orderSkus">SKUs:</label>
+                                    <input type="text" id="orderSkus" name="skus" class="form-control" value="MESP-C-U1Y-PD-TST" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="orderTermType">Term Type:</label>
+                                    <select id="orderTermType" name="termType" class="form-control" required>
+                                        <option value="ANNUAL">Annual</option>
+                                        <option value="MONTHLY">Monthly</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="orderTermLength">Term Length:</label>
+                                    <input type="number" id="orderTermLength" name="termLength" class="form-control" value="1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="orderSeatTotal">Seat Total:</label>
+                                    <input type="number" id="orderSeatTotal" name="seatTotal" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="orderContactEmail">Contact Email:</label>
+                                    <input type="email" id="orderContactEmail" name="contactEmail" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="orderContactFirstName">Contact First Name:</label>
+                                    <input type="text" id="orderContactFirstName" name="contactFirstName" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="orderContactLastName">Contact Last Name:</label>
+                                    <input type="text" id="orderContactLastName" name="contactLastName" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="orderCompanyName">Company Name:</label>
+                                    <input type="text" id="orderCompanyName" name="companyName" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="orderAutoRenewState">Auto Renew:</label>
+                                    <select id="orderAutoRenewState" name="autoRenewState" class="form-control" required>
+                                        <option value="OPEN">Open</option>
+                                        <option value="ON">On</option>
+                                        <option value="OFF">Off</option>
+                                    </select>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                            <button type="button" class="btn btn-primary" id="submitNewTenant">Create Tenant</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+        <!-- JSON View Tenant Output Modal -->
+        <div class="modal fade" id="jsonOutputModal" tabindex="-1" role="dialog" aria-labelledby="jsonOutputModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="jsonOutputModalLabel">Tenant Details</h5>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- JSON will be displayed here -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -250,7 +448,6 @@
                 </div>
             </div>
         </div>
-    
 
         <!-- Cancel Tenant Modal -->
         <div class="modal fade" id="cancelTenantModal" tabindex="-1" role="dialog" aria-labelledby="cancelTenantModalLabel" aria-hidden="true">
@@ -264,6 +461,7 @@
                     </div>
                     <div class="modal-body">
                         <p>Are you sure you want to cancel this tenant? This action cannot be undone.</p>
+                        <p><strong>Note:</strong> Cancellation within 24 business hours of tenant creation will immediately cancel the order. After that window, cancellation requests are deferred until the end of the term.</p>
                         <form id="cancelTenantForm">
                             <input type="hidden" id="cancelTenantId" name="cancelTenantId">
                             <input type="hidden" id="cancelExternalPartnerId" name="cancelExternalPartnerId">
@@ -281,7 +479,6 @@
                 </div>
             </div>
         </div>
-    </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
@@ -290,100 +487,168 @@
         $(document).ready(function() {
             // Fetch organizations when the page loads
             fetchOrganizations();
-            
-            // Form submission for creating a new ORG
-            $('#newOrgForm').submit(function(e) {
-                e.preventDefault();
+
+            // View organization details
+            $(document).on('click', '.view-org', function() {
+                const orgId = $(this).data('org-id');
                 
-                console.log("Form submitted");
-                
-                // Collect form data ORG
-                const formData = {
-                    transactionId: $('#transactionId').val(),
-                    externalPartnerId: $('#externalPartnerId').val(),
-                    seatTotal: parseInt($('#seatTotal').val()),
-                    defaultOrganization: $('#defaultOrganization').val(),
-                    commercialPartnerName: $('#commercialPartnerName').val(),
-                    contactEmail: $('#contactEmail').val(),
-                    contactFirstName: $('#contactFirstName').val(),
-                    contactLastName: $('#contactLastName').val(),
-                    name: $('#name').val(),
-                };
-                
-                console.log("Sending data:", formData);
-                
-                // Submit the order ORG
                 $.ajax({
-                    url: '/api/new_org',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify(formData),
+                    url: `/api/org/${orgId}`,
+                    type: 'GET',
                     success: function(response) {
-                        alert('ORG created successfully!');
-                        window.location.reload();
+                        // Format the JSON with proper indentation
+                        const prettyJSON = JSON.stringify(response, null, 2);
+                        
+                        // Create a container to display the formatted JSON
+                        const jsonContainer = $('<div class="json-container"></div>');
+                        jsonContainer.html(`<pre>${prettyJSON}</pre>`);
+                        
+                        // Show in modal
+                        $('#jsonOutputModal .modal-title').text('Organization Details');
+                        $('#jsonOutputModal .modal-body').html(jsonContainer);
+                        $('#jsonOutputModal').modal('show');
                     },
                     error: function(xhr) {
-                        let errorMessage = 'Error creating ORG';
-                        if (xhr.responseJSON && xhr.responseJSON.error) {
-                            errorMessage += ': ' + xhr.responseJSON.error;
-                            if (xhr.responseJSON.details) {
-                                errorMessage += '\nDetails: ' + JSON.stringify(xhr.responseJSON.details);
-                            }
-                        }
-                        alert(errorMessage);
-                        console.error('Error response:', xhr.responseText);
+                        console.error('Error details:', xhr.status, xhr.responseText);
+                        alert('Error fetching organization details: ' + (xhr.responseJSON ? xhr.responseJSON.error : 'Unknown error'));
                     }
                 });
             });
 
-            // Form submission for creating a new tenant
-            $('#newOrderForm').submit(function(e) {
-                e.preventDefault();
+            // Edit organization
+            $(document).on('click', '.edit-org', function() {
+                const orgId = $(this).data('org-id');
                 
-                console.log("Form submitted");
-                
-                // Collect form data
-                const formData = {
-                    transactionId: $('#transactionId').val(),
-                    externalPartnerId: $('#externalPartnerId').val(),
-                    skus: [$('#skus').val()],
-                    termType: $('#termType').val(),
-                    termLength: parseInt($('#termLength').val()),
-                    seatTotal: parseInt($('#seatTotal').val()),
-                    contactEmail: $('#contactEmail').val(),
-                    contactFirstName: $('#contactFirstName').val(),
-                    contactLastName: $('#contactLastName').val(),
-                    companyName: $('#companyName').val(),
-                    autoRenewState: $('#autoRenewState').val()
-                };
-                
-                console.log("Sending data:", formData);
-                
-                // Submit the order
+                // First, get the organization details to populate the form
                 $.ajax({
-                    url: '/api/new_order',
-                    type: 'POST',
-                    contentType: 'application/json',
-                    data: JSON.stringify(formData),
+                    url: `/api/org/${orgId}`,
+                    type: 'GET',
                     success: function(response) {
-                        alert('Tenant created successfully!');
-                        window.location.reload();
+                        // Create a modal for editing if it doesn't exist
+                        if ($('#editOrgModal').length === 0) {
+                            $('body').append(`
+                                <div class="modal fade" id="editOrgModal" tabindex="-1" role="dialog" aria-labelledby="editOrgModalLabel" aria-hidden="true">
+                                    <div class="modal-dialog" role="document">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="editOrgModalLabel">Edit Organization</h5>
+                                                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <form id="editOrgForm">
+                                                    <input type="hidden" id="editOrgId" name="editOrgId">
+                                                    <div class="form-group">
+                                                        <label for="editOrgName">Name:</label>
+                                                        <input type="text" id="editOrgName" name="editOrgName" class="form-control" readonly>
+                                                        <small class="form-text text-muted">Organization name cannot be changed.</small>
+                                                    </div>
+                                                    <div class="form-group">
+                                                        <label for="editOrgDefaultOrg">Set as Default Organization:</label>
+                                                        <select id="editOrgDefaultOrg" name="editOrgDefaultOrg" class="form-control">
+                                                            <option value="true">Yes</option>
+                                                            <option value="false">No</option>
+                                                        </select>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                                <button type="button" class="btn btn-primary" id="saveOrgChanges">Save changes</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `);
+                            
+                            // Add event handler for the save button
+                            $('#saveOrgChanges').click(function() {
+                                const orgId = $('#editOrgId').val();
+                                const setAsDefault = $('#editOrgDefaultOrg').val() === 'true';
+                                
+                                if (setAsDefault) {
+                                    // Only send the request if setting as default
+                                    $.ajax({
+                                        url: `/api/org/${orgId}/default`,
+                                        type: 'PUT',
+                                        contentType: 'application/json',
+                                        data: JSON.stringify({}),  // Empty body as per API requirements
+                                        success: function(response) {
+                                            alert('Organization updated successfully!');
+                                            $('#editOrgModal').modal('hide');
+                                            fetchOrganizations(); // Refresh the organizations table
+                                        },
+                                        error: function(xhr) {
+                                            console.error('Error details:', xhr.status, xhr.responseText);
+                                            let errorMessage = 'Error updating organization';
+                                            if (xhr.responseJSON && xhr.responseJSON.error) {
+                                                errorMessage = xhr.responseJSON.error;
+                                            }
+                                            alert(errorMessage);
+                                        }
+                                    });
+                                } else {
+                                    alert('Only setting an organization as default is supported.');
+                                    $('#editOrgModal').modal('hide');
+                                }
+                            });
+                        }
+                        
+                        // Populate the form with organization data
+                        $('#editOrgId').val(orgId);
+                        $('#editOrgName').val(response.name || '');
+                        $('#editOrgDefaultOrg').val(response.defaultOrganization ? 'true' : 'false');
+                        
+                        // Show the modal
+                        $('#editOrgModal').modal('show');
                     },
                     error: function(xhr) {
-                        let errorMessage = 'Error creating tenant';
-                        if (xhr.responseJSON && xhr.responseJSON.error) {
-                            errorMessage += ': ' + xhr.responseJSON.error;
-                            if (xhr.responseJSON.details) {
-                                errorMessage += '\nDetails: ' + JSON.stringify(xhr.responseJSON.details);
-                            }
-                        }
-                        alert(errorMessage);
-                        console.error('Error response:', xhr.responseText);
+                        console.error('Error details:', xhr.status, xhr.responseText);
+                        alert('Error fetching organization details: ' + (xhr.responseJSON ? xhr.responseJSON.error : 'Unknown error'));
                     }
                 });
             });
-            
-            
+
+
+            // Function to fetch organizations
+            function fetchOrganizations() {
+                $('#orgsLoading').show();
+                $('#orgsTable').hide();
+                
+                $.ajax({
+                    url: '/api/orgs',
+                    type: 'GET',
+                    success: function(response) {
+                        $('#orgsTableBody').empty();
+                        
+                        // Add each organization to the table
+                        response.forEach(function(org) {
+                            $('#orgsTableBody').append(`
+                                <tr>
+                                    <td>${org.name}</td>
+                                    <td>${org.externalOrgId}</td>
+                                    <td>${org.seats}</td>
+                                    <td>${org.defaultOrganization}</td>
+                                    <td>${org.state}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary view-org" data-org-id="${org.externalOrgId}">View</button>
+                                        <button class="btn btn-sm btn-warning edit-org" data-org-id="${org.externalOrgId}">Edit</button>
+                                    </td>
+                                </tr>
+                            `);
+                        });
+                        
+                        $('#orgsLoading').hide();
+                        $('#orgsTable').show();
+                    },
+                    error: function(xhr) {
+                        alert('Error loading organizations: ' + (xhr.responseJSON ? xhr.responseJSON.error : 'Unknown error'));
+                        $('#orgsLoading').hide();
+                    }
+                });
+            }
+
             // View tenant details
             $('.view-tenant').on('click', function() {
                 console.log("View button clicked");
@@ -395,11 +660,11 @@
                         // Format the JSON with proper indentation
                         const prettyJSON = JSON.stringify(response, null, 2);
                         
-                        // Create a modal or container to display the formatted JSON
+                        // Create a container to display the formatted JSON
                         const jsonContainer = $('<div class="json-container"></div>');
                         jsonContainer.html(`<pre>${prettyJSON}</pre>`);
                         
-                        // Add some basic styling
+                        // Add styling
                         $('pre', jsonContainer).css({
                             'background-color': '#f5f5f5',
                             'padding': '15px',
@@ -409,24 +674,25 @@
                             'font-family': 'monospace'
                         });
                         
-                        // Show in a modal or replace an existing container
+                        // Show in modal
                         $('#jsonOutputModal .modal-body').html(jsonContainer);
                         $('#jsonOutputModal').modal('show');
-                        
-                        // Alternatively, if you don't have a modal:
-                        // $('body').append(jsonContainer);
                     },
                     error: function(xhr) {
                         console.error('Error details:', xhr.status, xhr.responseText);
                         alert('Error fetching tenant details: ' + (xhr.responseJSON ? xhr.responseJSON.error : 'Unknown error'));
                     }
                 });
-            });   
+            });
 
             // Edit tenant
             $('.edit-tenant').on('click', function() {
                 console.log("Edit button clicked");
                 const tenantId = $(this).data('tenant-id');
+                
+                // Generate a unique transaction ID
+                const transactionId = "modify_" + Date.now();
+                $('#editTransactionId').val(transactionId);
                 
                 // First, get the tenant details to populate the form
                 $.ajax({
@@ -434,8 +700,11 @@
                     type: 'GET',
                     success: function(response) {
                         $('#editTenantId').val(tenantId);
-                        $('#editName').val(response.name || '');
                         $('#editSeatTotal').val(response.seatTotal || 0);
+                        $('#editSkus').val("MESP-C-U1Y-PD-TST");
+                        $('#editTermType').val("ANNUAL");
+                        $('#editTermLength').val(1);
+                        $('#editAutoRenewState').val("OPEN");
                         $('#editTenantModal').modal('show');
                     },
                     error: function(xhr) {
@@ -448,13 +717,17 @@
             // Save tenant changes
             $('#saveTenantChanges').click(function() {
                 const tenantId = $('#editTenantId').val();
-                const transactionId = "modify_" + Date.now(); // Generate a unique transaction ID
+                const transactionId = $('#editTransactionId').val();
                 
                 const formData = {
                     transactionId: transactionId,
                     externalPartnerId: tenantId,
                     seatTotal: parseInt($('#editSeatTotal').val()),
-                    skus: ["MESP-C-U1Y-PD-TST"] // Include required SKUs
+                    skus: [$('#editSkus').val()],
+                    termType: $('#editTermType').val(),
+                    termLength: parseInt($('#editTermLength').val()),
+                    autoRenewState: $('#editAutoRenewState').val(),
+                    productType: "MES"
                 };
                 
                 $.ajax({
@@ -473,7 +746,7 @@
                     }
                 });
             });
-            
+
             // Cancel tenant
             $('.cancel-tenant').on('click', function() {
                 console.log("Cancel button clicked");
@@ -486,6 +759,7 @@
                 // Show the cancel confirmation modal with pre-filled data
                 $('#cancelTenantId').val(tenantId);
                 $('#cancelExternalPartnerId').val(externalPartnerId);
+                $('#cancelOrderId').val(''); // This might be populated from your API if needed
                 $('#cancelTransactionId').val(transactionId);
                 $('#cancelTenantModal').modal('show');
             });
@@ -498,12 +772,14 @@
                 const formData = {
                     transactionId: transactionId,
                     externalPartnerId: externalPartnerId,
-                    skus: ["MESP-C-U1Y-PD-TST"], // Required field according to schema
-                    productType: "MES" // Optional but recommended
+                    skus: ["MESP-C-U1Y-PD-TST"], // Adding the required SKUs
+                    productType: "MES" // Adding the required product type
                 };
                 
+                console.log("Sending cancel request with data:", formData);
+                
                 $.ajax({
-                    url: `/api/orders/cancel`,
+                    url: '/api/orders/cancel',
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify(formData),
@@ -518,52 +794,494 @@
                     }
                 });
             });
-        });
-        
-        // Function to fetch organizations
-        function fetchOrganizations() {
-            console.log("Fetching organizations...");
-            $.ajax({
-                url: '/api/orgs',
-                type: 'GET',
-                contentType: 'application/json',
-                success: function(response) {
-                    console.log("Organizations response:", response);
-                    if (response.orgs && response.orgs.length > 0) {
-                        displayOrganizations(response.orgs);
-                    } else {
-                        $('#orgsLoading').html('No organizations found.');
+
+            // Submit new ORG form
+            $('#submitNewOrg').click(function() {
+                const formData = {
+                    transactionId: $('#transactionId').val(),
+                    externalPartnerId: $('#externalPartnerId').val(),
+                    seatTotal: parseInt($('#seatTotal').val()),
+                    defaultOrganization: $('#defaultOrganization').val(),
+                    commercialPartnerName: $('#commercialPartnerName').val(),
+                    contactEmail: $('#contactEmail').val(),
+                    contactFirstName: $('#contactFirstName').val(),
+                    contactLastName: $('#contactLastName').val(),
+                    name: $('#name').val(),
+                };
+                
+                $.ajax({
+                    url: '/api/new_org',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        alert('ORG created successfully!');
+                        $('#createOrgModal').modal('hide');
+                        window.location.reload();
+                    },
+                    error: function(xhr) {
+                        let errorMessage = 'Error creating ORG';
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMessage += ': ' + xhr.responseJSON.error;
+                            if (xhr.responseJSON.details) {
+                                errorMessage += '\nDetails: ' + JSON.stringify(xhr.responseJSON.details);
+                            }
+                        }
+                        alert(errorMessage);
+                        console.error('Error response:', xhr.responseText);
                     }
-                },
-                error: function(xhr, status, error) {
-                    console.error("Error fetching organizations:", xhr.responseText);
-                    $('#orgsLoading').html('Error loading organizations: ' + 
-                        (xhr.responseJSON ? xhr.responseJSON.error : error));
+                });
+            });
+
+            // When the Create Tenant modal is opened, populate the organizations dropdown
+            $('#createTenantModal').on('show.bs.modal', function() {
+                // Fetch organizations for the dropdown
+                $.ajax({
+                    url: '/api/orgs',
+                    type: 'GET',
+                    success: function(orgs) {
+                        const dropdown = $('#externalOrgId');
+                        dropdown.empty();
+                        dropdown.append('<option value="">Select an organization...</option>');
+                        
+                        orgs.forEach(function(org) {
+                            dropdown.append(`<option value="${org.externalOrgId}">${org.name}</option>`);
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Error loading organizations:', xhr.responseText);
+                    }
+                });
+                
+                // Generate a unique transaction ID
+                $('#orderTransactionId').val('order_' + Date.now());
+            });
+
+            // Toggle managed tenant fields visibility
+            $('#orderType').change(function() {
+                if ($(this).val() === 'managed') {
+                    $('.managed-field').show();
+                } else {
+                    $('.managed-field').hide();
                 }
             });
-        }
-        
-        // Function to display organizations in the table
-        function displayOrganizations(orgs) {
-            if (orgs.length === 0) {
-                $('#orgsLoading').html('No organizations found.');
-                return;
-            }
-            
-            var tableBody = $('#orgsTableBody');
-            tableBody.empty();
 
-            orgs.forEach(function(org) {
-                var row = $('<tr>');
-                row.append($('<td>').text(org.name));
-                row.append($('<td>').text(org.externalOrgId));
-    
-                tableBody.append(row);
+            // Submit new Tenant form
+            $('#submitNewTenant').click(function() {
+                const isManaged = $('#orderType').val() === 'managed';
+                
+                const formData = {
+                    transactionId: $('#orderTransactionId').val(),
+                    externalPartnerId: $('#orderExternalPartnerId').val(),
+                    skus: [$('#orderSkus').val()],
+                    termType: $('#orderTermType').val(),
+                    termLength: parseInt($('#orderTermLength').val()),
+                    seatTotal: parseInt($('#orderSeatTotal').val()),
+                    contactEmail: $('#orderContactEmail').val(),
+                    contactFirstName: $('#orderContactFirstName').val(),
+                    contactLastName: $('#orderContactLastName').val(),
+                    companyName: $('#orderCompanyName').val(),
+                    autoRenewState: $('#orderAutoRenewState').val()
+                };
+                
+                // Add managed-specific fields if needed
+                if (isManaged) {
+                    formData.managed = true;
+                    formData.externalOrgId = $('#externalOrgId').val();
+                }
+                
+                console.log("Sending new tenant data:", formData);
+                
+                $.ajax({
+                    url: '/api/new_order',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function(response) {
+                        alert('Tenant created successfully!');
+                        $('#createTenantModal').modal('hide');
+                        window.location.reload();
+                    },
+                    error: function(xhr) {
+                        let errorMessage = 'Error creating tenant';
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMessage += ': ' + xhr.responseJSON.error;
+                            if (xhr.responseJSON.details) {
+                                errorMessage += '\nDetails: ' + JSON.stringify(xhr.responseJSON.details);
+                            }
+                        }
+                        alert(errorMessage);
+                        console.error('Error response:', xhr.responseText);
+                    }
+                });
             });
             
-            $('#orgsLoading').hide();
-            $('#orgsTable').show();
+// Tenant Key Management
+// Tenant Key Management
+$('#getTenantKeys').click(function() {
+    const tenantId = $('#tenantKeyId').val();
+    if (!tenantId) {
+        alert('Please select a tenant');
+        return;
+    }
+    
+    $.ajax({
+        url: `/api/mgmt/tenants/${tenantId}/keys`,
+        type: 'GET',
+        success: function(response) {
+            console.log("Raw API response:", JSON.stringify(response));
+            $('#tenantKeysTable').empty();
+            
+            if (response.length === 0) {
+                $('#tenantKeysTable').append('<tr><td colspan="4">No keys found</td></tr>');
+            } else {
+                response.forEach(function(key) {
+                    // Format the createdAt date (ISO string)
+                    let createdDate = "Unknown";
+                    if (key.createdAt) {
+                        try {
+                            const date = new Date(key.createdAt);
+                            if (!isNaN(date.getTime())) {
+                                createdDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                            }
+                        } catch (e) {
+                            console.error("Error parsing createdAt:", e);
+                        }
+                    }
+                    
+                    // Format the expiresAt date (string timestamp)
+                    let expiresDate = "Unknown";
+                    if (key.expiresAt) {
+                        try {
+                            const timestamp = parseInt(key.expiresAt);
+                            const date = new Date(timestamp);
+                            if (!isNaN(date.getTime())) {
+                                expiresDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                            }
+                        } catch (e) {
+                            console.error("Error parsing expiresAt:", e);
+                        }
+                    }
+                    
+                    $('#tenantKeysTable').append(`
+                        <tr>
+                            <td>${key.keyName || 'ManagementAPI-Default'}</td>
+                            <td>${createdDate}</td>
+                            <td>${expiresDate}</td>
+                            <td>
+                                <button class="btn btn-sm btn-info view-key" data-type="tenant" data-id="${tenantId}" data-key-guid="${key.guid}">View</button>
+                                <button class="btn btn-sm btn-danger delete-key" data-type="tenant" data-id="${tenantId}" data-key-guid="${key.guid}">Delete</button>
+                            </td>
+                        </tr>
+                    `);
+                });
+            }
+            
+            $('#tenantKeysResult').show();
+        },
+        error: function(xhr) {
+            console.error('Error details:', xhr.status, xhr.responseText);
+            alert('Error fetching tenant keys: ' + (xhr.responseJSON ? xhr.responseJSON.message : 'Unknown error'));
         }
+    });
+});
+
+$('#createTenantKey').click(function() {
+    const tenantId = $('#tenantKeyId').val();
+    const keyName = $('#tenantKeyName').val();
+    
+    if (!tenantId) {
+        alert('Please select a tenant');
+        return;
+    }
+    
+    const data = keyName ? { key_name: keyName } : {};
+    
+    $.ajax({
+        url: `/api/mgmt/tenants/${tenantId}/keys`,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function(response) {
+            console.log("Raw key creation response:", response);
+            
+            alert('Application key created successfully! Please save the key value as it will only be shown once.');
+            
+            // Display the key details
+            const keyDetails = $('<div></div>');
+            keyDetails.append(`<p><strong>Key Name:</strong> ${response.keyName || 'Default Key'}</p>`);
+            keyDetails.append(`<p><strong>Key Value:</strong> <code>${response.key || 'Not available'}</code></p>`);
+
+            // Format the createdAt date (ISO string)
+            let createdDate = "Unknown";
+            if (response.createdAt) {
+                try {
+                    const date = new Date(response.createdAt);
+                    if (!isNaN(date.getTime())) {
+                        createdDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                    }
+                } catch (e) {
+                    console.error("Error parsing createdAt:", e);
+                }
+            }
+
+            // Format the expiresAt date (string timestamp)
+            let expiresDate = "Unknown";
+            if (response.expiresAt) {
+                try {
+                    const timestamp = parseInt(response.expiresAt);
+                    const date = new Date(timestamp);
+                    if (!isNaN(date.getTime())) {
+                        expiresDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                    }
+                } catch (e) {
+                    console.error("Error parsing expiresAt:", e);
+                }
+            }
+
+            keyDetails.append(`<p><strong>Created:</strong> ${createdDate}</p>`);
+            keyDetails.append(`<p><strong>Expires:</strong> ${expiresDate}</p>`);
+            keyDetails.append(`<p><strong>Fingerprint:</strong> ${response.fingerprint || 'Not available'}</p>`);
+
+            $('#keyDetails').html(keyDetails);
+            $('#keyDetailsModalLabel').text('New Application Key');
+            $('#keyDetailsModal').modal('show');
+            
+            // Refresh the keys list
+            $('#getTenantKeys').click();
+        },
+        error: function(xhr) {
+            console.error('Error details:', xhr.status, xhr.responseText);
+            alert('Error creating tenant key: ' + (xhr.responseJSON ? xhr.responseJSON.message : 'Unknown error'));
+        }
+    });
+});
+
+            // View and Delete Key handlers
+            $(document).on('click', '.view-key', function() {
+                const type = $(this).data('type');
+                const id = $(this).data('id');
+                const keyGuid = $(this).data('key-guid');
+                
+                $.ajax({
+                    url: `/api/mgmt/${type}s/${id}/keys/${keyGuid}`,
+                    type: 'GET',
+                    success: function(response) {
+                        console.log("Key details response:", response);
+                        
+                        // Format the createdAt date (ISO string)
+                        let createdDate = "Unknown";
+                        if (response.createdAt) {
+                            try {
+                                const date = new Date(response.createdAt);
+                                if (!isNaN(date.getTime())) {
+                                    createdDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                                }
+                            } catch (e) {
+                                console.error("Error parsing createdAt:", e);
+                            }
+                        }
+                        
+                        // Format the expiresAt date (string timestamp)
+                        let expiresDate = "Unknown";
+                        if (response.expiresAt) {
+                            try {
+                                const timestamp = parseInt(response.expiresAt);
+                                const date = new Date(timestamp);
+                                if (!isNaN(date.getTime())) {
+                                    expiresDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                                }
+                            } catch (e) {
+                                console.error("Error parsing expiresAt:", e);
+                            }
+                        }
+                        
+                        const keyDetails = $('<div></div>');
+                        keyDetails.append(`<p><strong>Key Name:</strong> ${response.keyName || 'Default Key'}</p>`);
+                        keyDetails.append(`<p><strong>Created:</strong> ${createdDate}</p>`);
+                        keyDetails.append(`<p><strong>Expires:</strong> ${expiresDate}</p>`);
+                        keyDetails.append(`<p><strong>Fingerprint:</strong> ${response.fingerprint || 'Not available'}</p>`);
+                        
+                        $('#keyDetails').html(keyDetails);
+                        $('#keyDetailsModalLabel').text('Application Key Details');
+                        $('#keyDetailsModal').modal('show');
+                    },
+                    error: function(xhr) {
+                        console.error('Error details:', xhr.status, xhr.responseText);
+                        alert('Error fetching key details: ' + (xhr.responseJSON ? xhr.responseJSON.message : 'Unknown error'));
+                    }
+                });
+            });
+
+
+            $(document).on('click', '.delete-key', function() {
+                if (!confirm('Are you sure you want to delete this key? This action cannot be undone.')) {
+                    return;
+                }
+                
+                const type = $(this).data('type');
+                const id = $(this).data('id');
+                const keyGuid = $(this).data('key-guid');
+                
+                $.ajax({
+                    url: `/api/mgmt/${type}s/${id}/keys/${keyGuid}`,
+                    type: 'DELETE',
+                    success: function(response) {
+                        alert('Application key deleted successfully!');
+                        
+                        // Refresh the keys list
+                        if (type === 'tenant') {
+                            $('#getTenantKeys').click();
+                        } else {
+                            $('#getOrgKeys').click();
+                        }
+                    },
+                    error: function(xhr) {
+                        console.error('Error details:', xhr.status, xhr.responseText);
+                        alert('Error deleting key: ' + (xhr.responseJSON ? xhr.responseJSON.message : 'Unknown error'));
+                    }
+                });
+            });
+        });
+// Organization Key Management
+$('#getOrgKeys').click(function() {
+    const orgId = $('#orgKeyId').val();
+    if (!orgId) {
+        alert('Please select an organization');
+        return;
+    }
+    
+    $.ajax({
+        url: `/api/mgmt/orgs/${orgId}/keys`,
+        type: 'GET',
+        success: function(response) {
+            console.log("Raw API response:", JSON.stringify(response));
+            $('#orgKeysTable').empty();
+            
+            if (response.length === 0) {
+                $('#orgKeysTable').append('<tr><td colspan="4">No keys found</td></tr>');
+            } else {
+                response.forEach(function(key) {
+                    // Format the createdAt date (ISO string)
+                    let createdDate = "Unknown";
+                    if (key.createdAt) {
+                        try {
+                            const date = new Date(key.createdAt);
+                            if (!isNaN(date.getTime())) {
+                                createdDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                            }
+                        } catch (e) {
+                            console.error("Error parsing createdAt:", e);
+                        }
+                    }
+                    
+                    // Format the expiresAt date (string timestamp)
+                    let expiresDate = "Unknown";
+                    if (key.expiresAt) {
+                        try {
+                            const timestamp = parseInt(key.expiresAt);
+                            const date = new Date(timestamp);
+                            if (!isNaN(date.getTime())) {
+                                expiresDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                            }
+                        } catch (e) {
+                            console.error("Error parsing expiresAt:", e);
+                        }
+                    }
+                    
+                    $('#orgKeysTable').append(`
+                        <tr>
+                            <td>${key.keyName || 'ManagementAPI-Default'}</td>
+                            <td>${createdDate}</td>
+                            <td>${expiresDate}</td>
+                            <td>
+                                <button class="btn btn-sm btn-info view-key" data-type="org" data-id="${orgId}" data-key-guid="${key.guid}">View</button>
+                                <button class="btn btn-sm btn-danger delete-key" data-type="org" data-id="${orgId}" data-key-guid="${key.guid}">Delete</button>
+                            </td>
+                        </tr>
+                    `);
+                });
+            }
+            
+            $('#orgKeysResult').show();
+        },
+        error: function(xhr) {
+            console.error('Error details:', xhr.status, xhr.responseText);
+            alert('Error fetching organization keys: ' + (xhr.responseJSON ? xhr.responseJSON.message : 'Unknown error'));
+        }
+    });
+});
+
+$('#createOrgKey').click(function() {
+    const orgId = $('#orgKeyId').val();
+    const keyName = $('#orgKeyName').val();
+    
+    if (!orgId) {
+        alert('Please select an organization');
+        return;
+    }
+    
+    const data = keyName ? { key_name: keyName } : {};
+    
+    $.ajax({
+        url: `/api/mgmt/orgs/${orgId}/keys`,
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify(data),
+        success: function(response) {
+            console.log("Raw key creation response:", response);
+            
+            alert('Application key created successfully! Please save the key value as it will only be shown once.');
+            
+            // Display the key details
+            const keyDetails = $('<div></div>');
+            keyDetails.append(`<p><strong>Key Name:</strong> ${response.keyName || 'Default Key'}</p>`);
+            keyDetails.append(`<p><strong>Key Value:</strong> <code>${response.key || 'Not available'}</code></p>`);
+
+            // Format the createdAt date (ISO string)
+            let createdDate = "Unknown";
+            if (response.createdAt) {
+                try {
+                    const date = new Date(response.createdAt);
+                    if (!isNaN(date.getTime())) {
+                        createdDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                    }
+                } catch (e) {
+                    console.error("Error parsing createdAt:", e);
+                }
+            }
+
+            // Format the expiresAt date (string timestamp)
+            let expiresDate = "Unknown";
+            if (response.expiresAt) {
+                try {
+                    const timestamp = parseInt(response.expiresAt);
+                    const date = new Date(timestamp);
+                    if (!isNaN(date.getTime())) {
+                        expiresDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                    }
+                } catch (e) {
+                    console.error("Error parsing expiresAt:", e);
+                }
+            }
+
+            keyDetails.append(`<p><strong>Created:</strong> ${createdDate}</p>`);
+            keyDetails.append(`<p><strong>Expires:</strong> ${expiresDate}</p>`);
+            keyDetails.append(`<p><strong>Fingerprint:</strong> ${response.fingerprint || 'Not available'}</p>`);
+
+            $('#keyDetails').html(keyDetails);
+            $('#keyDetailsModalLabel').text('New Application Key');
+            $('#keyDetailsModal').modal('show');
+            
+            // Refresh the keys list
+            $('#getOrgKeys').click();
+        },
+        error: function(xhr) {
+            console.error('Error details:', xhr.status, xhr.responseText);
+            alert('Error creating organization key: ' + (xhr.responseJSON ? xhr.responseJSON.message : 'Unknown error'));
+        }
+    });
+});
 
     </script>
 </body>
