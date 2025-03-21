@@ -12,7 +12,7 @@ logging.basicConfig(level=logging.DEBUG)
 
 # OAuth 2.0 Configuration
 TOKEN_URL = "https://partner.preprod.flexilis.com/oauth2/token"
-PARTNER_CP_KEY = ""
+PARTNER_CP_KEY = "Replace with your key"
 
 # API Configuration
 API_BASE_URL = "https://partner.preprod.flexilis.com"
